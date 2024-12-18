@@ -1,0 +1,102 @@
+import numpy as np
+
+def grey_wolf_optimizer(obj_function, dim, bounds, num_wolves=5, max_iter=100):
+    """
+    Grey Wolf Optimizer implementation.
+
+    Parameters:
+        obj_function: callable
+            The objective function to minimize.
+        dim: int
+            Dimensionality of the search space.
+        bounds: tuple
+            Tuple of two lists specifying the lower and upper bounds of each dimension.
+        num_wolves: int
+            Number of wolves in the population.
+        max_iter: int
+            Maximum number of iterations.
+
+    Returns:
+        best_position: ndarray
+            The best solution found.
+        best_score: float
+            The objective value of the best solution.
+    """
+    lower_bound, upper_bound = np.array(bounds[0]), np.array(bounds[1])
+
+    # Initialize the population (wolves) with random positions within bounds
+    wolves = np.random.uniform(lower_bound, upper_bound, (num_wolves, dim))
+
+    # Initialize alpha, beta, and delta wolves
+    alpha_pos = np.zeros(dim)
+    beta_pos = np.zeros(dim)
+    delta_pos = np.zeros(dim)
+
+    alpha_score = float('inf')
+    beta_score = float('inf')
+    delta_score = float('inf')
+
+    for iteration in range(max_iter):
+        # Evaluate the fitness of each wolf
+        fitness = np.array([obj_function(wolf) for wolf in wolves])
+
+        # Update alpha, beta, and delta wolves based on fitness
+        for i in range(num_wolves):
+            if fitness[i] < alpha_score:
+                alpha_score, beta_score, delta_score = fitness[i], alpha_score, beta_score
+                alpha_pos, beta_pos, delta_pos = wolves[i].copy(), alpha_pos.copy(), beta_pos.copy()
+            elif fitness[i] < beta_score:
+                beta_score, delta_score = fitness[i], beta_score
+                beta_pos, delta_pos = wolves[i].copy(), beta_pos.copy()
+            elif fitness[i] < delta_score:
+                delta_score = fitness[i]
+                delta_pos = wolves[i].copy()
+
+        # Update positions of the wolves
+        for i in range(num_wolves):
+            for d in range(dim):
+                r1, r2 = np.random.rand(), np.random.rand()
+                a1 = 2 * (1 - iteration / max_iter) * r1 - 1
+                c1 = 2 * r2
+                d_alpha = abs(c1 * alpha_pos[d] - wolves[i, d])
+                x1 = alpha_pos[d] - a1 * d_alpha
+
+                r1, r2 = np.random.rand(), np.random.rand()
+                a2 = 2 * (1 - iteration / max_iter) * r1 - 1
+                c2 = 2 * r2
+                d_beta = abs(c2 * beta_pos[d] - wolves[i, d])
+                x2 = beta_pos[d] - a2 * d_beta
+
+                r1, r2 = np.random.rand(), np.random.rand()
+                a3 = 2 * (1 - iteration / max_iter) * r1 - 1
+                c3 = 2 * r2
+                d_delta = abs(c3 * delta_pos[d] - wolves[i, d])
+                x3 = delta_pos[d] - a3 * d_delta
+
+                wolves[i, d] = np.clip((x1 + x2 + x3) / 3, lower_bound[d], upper_bound[d])
+
+    return alpha_pos, alpha_score
+
+# Example Usage
+if __name__ == "__main__":
+    # Define an example objective function (Rastrigin Function)
+    def rastrigin_function(x):
+        return 10 * len(x) + sum(x**2 - 10 * np.cos(2 * np.pi * x))
+
+    # Set parameters
+    dimension = 5
+    bounds = [np.full(dimension, -5.12), np.full(dimension, 5.12)]
+    num_wolves = 8
+    max_iterations = 150
+
+    # Run GWO
+    best_position, best_score = grey_wolf_optimizer(
+        obj_function=rastrigin_function,
+        dim=dimension,
+        bounds=bounds,
+        num_wolves=num_wolves,
+        max_iter=max_iterations,
+    )
+
+    print("Best Position:", best_position)
+    print("Best Score:", best_score)
